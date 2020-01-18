@@ -9,6 +9,7 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.Combine;
 import org.apache.beam.sdk.transforms.Combine.CombineFn;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.Filter;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
@@ -26,6 +27,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.StreamSupport;
 
+import static java.time.OffsetDateTime.now;
 import static org.apache.beam.sdk.values.TypeDescriptors.strings;
 
 public class Application {
@@ -45,7 +47,7 @@ public class Application {
         System.out.println("read from servers " + options.getBootstrapServers());
         System.out.println("read from topic [" + options.getTopicName() + "]");
 
-        Window<KV<String, Integer>> window = Window.<KV<String, Integer>>into(FixedWindows.of(Duration.standardSeconds(10)))
+        Window<KV<String, Integer>> window = Window.<KV<String, Integer>>into(FixedWindows.of(Duration.standardSeconds(30)))
                 //.triggering(Repeatedly.forever(AfterPane.elementCountAtLeast(100000000)))
                 //.discardingFiredPanes()
                 .withAllowedLateness(Duration.standardSeconds(0));
@@ -78,21 +80,13 @@ public class Application {
                     @Override
                     public Acc createAccumulator() {
                         Acc data = new Acc();
-                        data.data = null;
+                        data.data = 0;
 
                         return data;
                     }
 
                     private Integer reduce(Integer a, Integer b) {
-                        if (a == null) {
-                            return b;
-                        } else if (b == null) {
-                            return a;
-                        } else if (a > b) {
-                            return a;
-                        } else {
-                            return b;
-                        }
+                        return a + b;
                     }
 
                     @Override
@@ -118,12 +112,18 @@ public class Application {
                     }
                 }))
 
+                .apply(Filter.by(kv -> kv.getValue() > 0))
+
                 .apply(ParDo.of(new DoFn<KV<String, Integer>, KV<String, Integer>>() {
 
                     @ProcessElement
                     public void processElement(ProcessContext c, @Element KV<String, Integer> element, OutputReceiver<KV<String, Integer>> out) {
-                        System.out.println("output key: [" + element.getKey() + "], value: [" + element.getValue() + "] \t\t event time: " + c.timestamp());
+                        System.out.println(log(element));
                         out.output(element);
+                    }
+
+                    private String log(KV<String, Integer> element) {
+                        return String.format("output key: [%s], value: [%10d] \t\t  %s", element.getKey(), element.getValue(), now());
                     }
 
                 }))
