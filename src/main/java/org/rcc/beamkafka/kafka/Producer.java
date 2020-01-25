@@ -17,20 +17,20 @@ public class Producer {
     @Autowired
     private KafkaConfig config;
 
-    public void send(Integer i) {
-        kafkaTemplate.send(config.topicName, String.valueOf(i), i);
-        kafkaTemplate.flush();
-
+    void send(Integer key, Integer value) {
+        kafkaTemplate.send(config.topicName, String.valueOf(key), value);
     }
 
-    public static void main(String [] args) {
+    void send(Integer value) {
+        IntStream.range(0, 5).forEach(key -> send(key, value));
+        kafkaTemplate.flush();
+    }
+
+    public static void main(String[] args) {
         ApplicationContext ctx = new AnnotationConfigApplicationContext("org.rcc.beamkafka");
 
         Producer producer = ctx.getBean(Producer.class);
-
-        for (int j = 0; j < 100_000; j ++) {
-            IntStream.range(1, 4).forEach(i -> producer.send(i));
-        }
+        IntStream.range(0, 100_000).forEach(producer::send);
 
     }
 
