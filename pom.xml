@@ -19,7 +19,7 @@
         <spark-scala.version>2.11</spark-scala.version>
         <scala.binary.version>2.11</scala.binary.version>
 
-        <apache-kafka.version>2.3.1</apache-kafka.version>
+        <apache-kafka.version>2.6.3</apache-kafka.version>
     </properties>
 
     <dependencies>
